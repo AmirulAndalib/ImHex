@@ -1585,8 +1585,10 @@ namespace hex::plugin::builtin {
                         return false;
                     });
                     m_runningParsers += 1;
-                    TaskManager::createBackgroundTask("hex.builtin.task.parsing_pattern", [this, code = std::move(code), provider](auto &){
-                        this->parsePattern(code, provider);
+
+                    const auto path = m_sourceCode.getBinding(provider).value_or(std::fs::path());
+                    TaskManager::createBackgroundTask("hex.builtin.task.parsing_pattern", [this, code = std::move(code), path, provider](auto &){
+                        this->parsePattern(code, path, provider);
 
                         if (m_runAutomatically)
                             m_triggerAutoEvaluate = true;
@@ -1811,13 +1813,15 @@ namespace hex::plugin::builtin {
         m_changesWereColored = false;
         m_allStepsCompleted = false;
         m_runningParsers += 1;
-        TaskManager::createBackgroundTask("hex.builtin.task.parsing_pattern", [this, code, provider](auto&) { this->parsePattern(code, provider); });
+        TaskManager::createBackgroundTask("hex.builtin.task.parsing_pattern", [this, code, provider, path](auto&) {
+            this->parsePattern(code, path, provider);
+        });
     }
 
-    void ViewPatternEditor::parsePattern(const std::string &code, prv::Provider *provider) {
+    void ViewPatternEditor::parsePattern(const std::string &code, const std::fs::path &path, prv::Provider *provider) {
 
         ContentRegistry::PatternLanguage::configureRuntime(*m_editorRuntime, nullptr);
-        const auto &ast = m_editorRuntime->parseString(code, pl::api::Source::DefaultSource);
+        const auto &ast = m_editorRuntime->parseString(code, wolv::util::toUTF8String(path));
         m_textEditor.get(provider).setLongestLineLength(m_editorRuntime->getInternals().preprocessor->getLongestLineLength());
 
         auto &patternVariables = m_patternVariables.get(provider);
@@ -1892,7 +1896,9 @@ namespace hex::plugin::builtin {
             return true;
         });
 
-        TaskManager::createTask("hex.builtin.view.pattern_editor.evaluating"_unlocalized, ProgressValue::None(), [this, code, provider](auto &task) {
+        const auto path = m_sourceCode.getBinding(provider).value_or(std::fs::path());
+
+        TaskManager::createTask("hex.builtin.view.pattern_editor.evaluating"_unlocalized, ProgressValue::None(), [this, code, provider, path](auto &task) {
             // Disable exception tracing to speed up evaluation
             trace::disableExceptionCaptureForCurrentThread();
 
@@ -1981,7 +1987,7 @@ namespace hex::plugin::builtin {
             };
 
 
-            m_lastEvaluationResult = runtime.executeString(code, pl::api::Source::DefaultSource, envVars, inVariables);
+            m_lastEvaluationResult = runtime.executeString(code, wolv::util::toUTF8String(path), envVars, inVariables);
             if (m_lastEvaluationResult != 0) {
                 m_lastEvaluationError.get(provider) = runtime.getEvalError();
                 m_lastCompileError.get(provider)    = runtime.getCompileErrors();

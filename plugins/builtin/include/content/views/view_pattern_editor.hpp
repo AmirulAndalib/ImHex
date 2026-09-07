@@ -198,7 +198,7 @@ namespace hex::plugin::builtin {
         void loadPatternFile(const std::fs::path &path, prv::Provider *provider, bool trackFile = false);
         bool isPatternDirty(prv::Provider *provider) const { return m_sourceCode.hasPendingData(provider); }
 
-        void parsePattern(const std::string &code, prv::Provider *provider);
+        void parsePattern(const std::string &code, const std::fs::path &path, prv::Provider *provider);
         void evaluatePattern(const std::string &code, prv::Provider *provider);
 
         ui::TextEditor *getEditorFromFocusedWindow();

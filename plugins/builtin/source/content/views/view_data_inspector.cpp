@@ -198,7 +198,7 @@ namespace hex::plugin::builtin {
     }
 
     void ViewDataInspector::executeInspector(const std::string& code, const std::fs::path& path, const std::map<std::string, pl::core::Token::Literal>& inVariables) {
-        if (m_runtime.executeString(code, pl::api::Source::DefaultSource, {}, inVariables, true) != 0) {
+        if (m_runtime.executeString(code, wolv::util::toUTF8String(path), {}, inVariables, true) != 0) {
 
             auto displayFunction = createPatternErrorDisplayFunction(path);
 
